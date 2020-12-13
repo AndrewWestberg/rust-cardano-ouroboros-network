@@ -6,24 +6,26 @@ SPDX-License-Identifier: GPL-3.0-only OR LGPL-3.0-only
 */
 
 use std::{
-    cmp::max,
-    rc::{Rc, Weak},
     cell::RefCell,
-    time::{Instant, Duration},
+    cmp::max,
     io,
-    io::{Read, Write},
+    io::{Error, ErrorKind, Read, Write},
     net::{TcpStream, ToSocketAddrs},
+    rc::{Rc, Weak},
+    time::{Duration, Instant},
 };
+
 use byteorder::{ByteOrder, NetworkEndian, WriteBytesExt};
+
 use crate::{
-    Protocol, Agency,
+    Agency, Protocol,
     protocols::handshake::HandshakeProtocol,
 };
 
 pub async fn connect(host: &str, port: u16, magic: u32) -> io::Result<Channel> {
-    let saddr = (host, port).to_socket_addrs().unwrap().nth(0).unwrap();
+    let saddr = (host, port).to_socket_addrs()?.nth(0).ok_or(Error::new(ErrorKind::InvalidInput, "No valid host found!"))?;
     // TODO: Asynchronous connect.
-    let channel = Channel::new(TcpStream::connect(&saddr).unwrap()).await;
+    let channel = Channel::new(TcpStream::connect_timeout(&saddr, Duration::from_secs(2))?).await;
     channel.execute(HandshakeProtocol {
         network_magic: magic,
         ..Default::default()

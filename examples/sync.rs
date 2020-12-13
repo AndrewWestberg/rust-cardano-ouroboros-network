@@ -24,7 +24,7 @@ fn main() {
     let cfg = common::init();
 
     block_on(async {
-        let channel = mux::tcp::connect(&cfg.host, cfg.port, cfg.magic).await.unwrap();
+        let (channel, _duration) = mux::tcp::connect(&cfg.host, cfg.port, cfg.magic).await.unwrap();
         try_join!(
             channel.execute(TxSubmissionProtocol::default()),
             channel.execute({ChainSyncProtocol {
