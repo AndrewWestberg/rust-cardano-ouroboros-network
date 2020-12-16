@@ -88,6 +88,7 @@ pub fn start<W: Write>(out: &mut W, cmd: Cmd, db: &std::path::PathBuf, host: &St
                                     match mux_receive_data(&mut protocols, &mut stream) {
                                         Ok(did_receive_data) => {
                                             if did_receive_data {
+                                                debug!("did_receive_data: true");
                                                 last_data_timestamp = Instant::now();
                                             }
                                         }
@@ -157,7 +158,7 @@ fn mux_send_data(start_time: &Instant, protocols: &mut Vec<MiniProtocol>, stream
                 message.write_u16::<NetworkEndian>(protocol.protocol_id()).unwrap();
                 message.write_u16::<NetworkEndian>(send_payload.len() as u16).unwrap();
                 message.write(&send_payload[..]).unwrap();
-                // debug!("sending: {}", hex::encode(&message));
+                debug!("sending ({}): {}", protocol.protocol_id(), hex::encode(&message));
                 stream.write(&message)?;
                 did_send_data = true;
                 break;
@@ -196,7 +197,7 @@ fn mux_receive_data(protocols: &mut Vec<MiniProtocol>, stream: &mut TcpStream) -
             // Find the protocol to handle the message
             for protocol in protocols.iter_mut() {
                 if protocol_id == (protocol.protocol_id() | 0x8000u16) {
-                    // println!("receive_data: {}", hex::encode(&payload));
+                    debug!("receive_data({}: {}", protocol_id, hex::encode(&payload));
                     protocol.receive_data(payload);
                     did_receive_data = true;
                     break;

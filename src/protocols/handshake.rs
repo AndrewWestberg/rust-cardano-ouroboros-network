@@ -45,8 +45,16 @@ impl HandshakeProtocol {
     // Create the byte representation of MsgProposeVersions for sending to the server
     fn msg_propose_versions(&self, network_magic: u32) -> Vec<u8> {
         let mut payload_map: BTreeMap<Value, Value> = BTreeMap::new();
-        // protocol version 3 mapped to the network_magic value
+        // protocol version 1 - mapped to network magic
+        payload_map.insert(Value::Integer(0x01), Value::Integer(network_magic as i128));
+        // protocol version 2 - mapped to network magic
+        payload_map.insert(Value::Integer(0x02), Value::Integer(network_magic as i128));
+        // protocol version 3 - mapped to network magic
         payload_map.insert(Value::Integer(0x03), Value::Integer(network_magic as i128));
+        // protocol version 5 - allegra mapped to the network_magic value and false
+        payload_map.insert(Value::Integer(0x04), Value::Array(vec![Value::Integer(network_magic as i128), Value::Bool(false)]));
+        // protocol version 5 - allegra mapped to the network_magic value and false
+        payload_map.insert(Value::Integer(0x05), Value::Array(vec![Value::Integer(network_magic as i128), Value::Bool(false)]));
 
         let message = Value::Array(vec![
             Value::Integer(0), // message_id
@@ -113,7 +121,7 @@ impl Protocol for HandshakeProtocol {
     }
 
     fn receive_data(&mut self, data: Vec<u8>) {
-        if data.len() != 8 {
+        if data.len() != 10 {
             // some payload error
             let cbor_value: Value = de::from_slice(&data[..]).unwrap();
             match self.find_error_message(&cbor_value) {

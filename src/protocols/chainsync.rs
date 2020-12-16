@@ -409,7 +409,7 @@ impl Protocol for ChainSyncProtocol {
                 None
             }
             State::CanAwait => {
-                debug!("ChainSyncProtocol::State::CanAwait");
+                //debug!("ChainSyncProtocol::State::CanAwait");
                 None
             }
             State::MustReply => {
