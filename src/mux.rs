@@ -6,3 +6,4 @@ SPDX-License-Identifier: GPL-3.0-only OR LGPL-3.0-only
 */
 
 pub mod tcp;
+pub mod unix;

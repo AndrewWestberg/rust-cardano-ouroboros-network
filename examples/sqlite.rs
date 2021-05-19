@@ -15,7 +15,7 @@ use std::{
 };
 use log::debug;
 use blake2b_simd::Params;
-use rusqlite::{Connection, Error, named_params, NO_PARAMS};
+use rusqlite::{Connection, Error, named_params};
 use cardano_ouroboros_network::{
     BlockStore,
     BlockHeader,
@@ -34,9 +34,9 @@ impl SQLiteBlockStore {
         {
             debug!("Intialize database.");
             db.execute_batch("PRAGMA journal_mode=WAL")?;
-            db.execute("CREATE TABLE IF NOT EXISTS db_version (version INTEGER PRIMARY KEY)", NO_PARAMS)?;
+            db.execute("CREATE TABLE IF NOT EXISTS db_version (version INTEGER PRIMARY KEY)", [])?;
             let mut stmt = db.prepare("SELECT version FROM db_version")?;
-            let mut rows = stmt.query(NO_PARAMS)?;
+            let mut rows = stmt.query([])?;
             let version: i64 = match rows.next()? {
                 None => { -1 }
                 Some(row) => {
@@ -69,11 +69,11 @@ impl SQLiteBlockStore {
                     protocol_major_version INTEGER NOT NULL, \
                     protocol_minor_version INTEGER NOT NULL, \
                     orphaned INTEGER NOT NULL DEFAULT 0 \
-                    )", NO_PARAMS)?;
-                db.execute("CREATE INDEX IF NOT EXISTS idx_chain_slot_number ON chain(slot_number)", NO_PARAMS)?;
-                db.execute("CREATE INDEX IF NOT EXISTS idx_chain_orphaned ON chain(orphaned)", NO_PARAMS)?;
-                db.execute("CREATE INDEX IF NOT EXISTS idx_chain_hash ON chain(hash)", NO_PARAMS)?;
-                db.execute("CREATE INDEX IF NOT EXISTS idx_chain_block_number ON chain(block_number)", NO_PARAMS)?;
+                    )", [])?;
+                db.execute("CREATE INDEX IF NOT EXISTS idx_chain_slot_number ON chain(slot_number)", [])?;
+                db.execute("CREATE INDEX IF NOT EXISTS idx_chain_orphaned ON chain(orphaned)", [])?;
+                db.execute("CREATE INDEX IF NOT EXISTS idx_chain_hash ON chain(hash)", [])?;
+                db.execute("CREATE INDEX IF NOT EXISTS idx_chain_block_number ON chain(block_number)", [])?;
             }
 
             // Upgrade their database to version 2
@@ -87,7 +87,7 @@ impl SQLiteBlockStore {
                     slots TEXT NOT NULL, \
                     hash TEXT NOT NULL,
                     UNIQUE(epoch,pool_id)
-                )", NO_PARAMS)?;
+                )", [])?;
             }
 
             // Update the db version now that we've upgraded the user's database fully
@@ -108,7 +108,7 @@ impl SQLiteBlockStore {
         let mut prev_eta_v =
             {
                 hex::decode(
-                    match db.query_row("SELECT eta_v, max(slot_number) FROM chain WHERE orphaned = 0", NO_PARAMS, |row| row.get(0)) {
+                    match db.query_row("SELECT eta_v, max(slot_number) FROM chain WHERE orphaned = 0", [], |row| row.get(0)) {
                         Ok(eta_v) => { eta_v }
                         Err(_) => {
                             if network_magic == 764824073 {
@@ -175,7 +175,7 @@ impl SQLiteBlockStore {
                     // get the last block eta_v (nonce) in the db
                     prev_eta_v = {
                         hex::decode(
-                            match tx.query_row("SELECT eta_v, max(slot_number) FROM chain WHERE orphaned = 0", NO_PARAMS, |row| row.get(0)) {
+                            match tx.query_row("SELECT eta_v, max(slot_number) FROM chain WHERE orphaned = 0", [], |row| row.get(0)) {
                                 Ok(eta_v) => { eta_v }
                                 Err(_) => {
                                     if network_magic == 764824073 {
@@ -196,7 +196,7 @@ impl SQLiteBlockStore {
                 // blake2b hash of prev_eta_v + block_eta_v
                 prev_eta_v = Params::new().hash_length(32).to_state().update(&*prev_eta_v).finalize().as_bytes().to_vec();
 
-                insert_stmt.execute_named(
+                insert_stmt.execute(
                     named_params! {
                     ":block_number" : block.block_number,
                     ":slot_number": block.slot_number,
@@ -239,7 +239,7 @@ impl BlockStore for SQLiteBlockStore {
     fn load_blocks(&mut self) -> Option<Vec<(i64, Vec<u8>)>> {
         let db = &self.db;
         let mut stmt = db.prepare("SELECT slot_number, hash FROM chain where orphaned = 0 ORDER BY slot_number DESC LIMIT 33").unwrap();
-        let blocks = stmt.query_map(NO_PARAMS, |row| {
+        let blocks = stmt.query_map([], |row| {
             let slot_result: Result<i64, Error> = row.get(0);
             let hash_result: Result<String, Error> = row.get(1);
             let slot = slot_result?;
